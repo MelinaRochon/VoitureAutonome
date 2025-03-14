@@ -105,7 +105,7 @@ void tLaneChangeCallback();
 // Cree les taches
 Task tCapteur(2000, TASK_FOREVER, &tCapteurCallback); // lis les capteurs
 Task tDrive(3000, TASK_FOREVER, &tDriveCallback); 
-Task tLaneChange(1000, TASK_FOREVER, &tLaneChangeCallback); 
+Task tLaneChange(1000, &tLaneChangeCallback); 
 
 Scheduler runner;
 
@@ -117,7 +117,7 @@ void tCapteurCallback() {
     Serial.println("In tCapteurCallback: distance = ");
         Serial.print(distance);
 
-moveForward();
+//moveForward();
     delay(10);
   
     // if (distance <= 30) { /* 30 cm de distance */
@@ -129,7 +129,7 @@ moveForward();
       
     } else {
       Serial.println("In distance > 30");
-      tLaneChange.disable(); // va au changement de voie
+      //tLaneChange.disable(); // va au changement de voie
       tDrive.enable();
 
     }
