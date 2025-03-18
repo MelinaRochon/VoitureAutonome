@@ -100,84 +100,79 @@ int lookLeft();
 // Callback methods
 void tCapteurCallback();
 void tDriveCallback();
-void tLaneChangeCallback();
 
 // Cree les taches
 Task tCapteur(2000, TASK_FOREVER, &tCapteurCallback); // lis les capteurs
 Task tDrive(3000, TASK_FOREVER, &tDriveCallback); 
-Task tLaneChange(1000, &tLaneChangeCallback); 
 
 Scheduler runner;
 
 void tCapteurCallback() {
-  //int distanceR = 0;
-  //int distanceL = 0;  
-  //while (1) {
-    distance = readPing();
-    Serial.println("In tCapteurCallback: distance = ");
-        Serial.print(distance);
+  distance = readPing();
+  Serial.print("In tCapteurCallback: distance = ");
+  Serial.println(distance);
 
-//moveForward();
-    delay(10);
-  
-    // if (distance <= 30) { /* 30 cm de distance */
-        if (distance <= 10) { /* 30 cm de distance */
-
-    Serial.println("In distance <= 30");
-      tDrive.disable();
-      tLaneChange.enable(); // va au changement de voie
-      
-    } else {
-      Serial.println("In distance > 30");
-      //tLaneChange.disable(); // va au changement de voie
-      tDrive.enable();
-
-    }
-  //}
-  //else {
-    //moveForward();
-  //}
+  if (distance <= 30) { // Obstacle detected within 30 cm
+      Serial.println("Obstacle detected. Enabling lane change.");
+      tDrive.disable();    // Disable the driving task
+      laneChange();
+  } else {
+      Serial.println("Path clear. Resuming forward motion.");
+      tDrive.enable();       // Enable the driving task
+  }
 }
 
 void tDriveCallback() {
     Serial.println("In tDriveCallback");
 
-  moveForward();
+  if(distance <= 10) {
+    moveStop();
+  }
+  else {
+    moveForward();
+    delay(1000);
+    moveStop();
+    delay(2000);
+  }
 
 }
 
-void tLaneChangeCallback() {
-  Serial.println("In tLaneChangeCallback");
+void laneChange() {
+  Serial.println("In tLaneChangeCallback: Changing lane.");
 
-  int distanceR = 0;
-  int distanceL = 0;  
-  //moveStop();
-  delay(2000);
-  // while ((distanceR < 40) || (distanceL < 40)) {
-      while ((distanceR < 10) || (distanceL < 10)) {
+  // Stop the car
+  moveStop();
+  delay(500);
 
-    distanceR = lookRight();
-    delay(200);
-    distanceL = lookLeft();
-    delay(200);
-  }
+  // Look for the best direction to turn
+  int distanceR = lookRight();
+  int distanceL = lookLeft();
 
-  // check max distance
+  // Turn in the direction with more space
   if (distanceR >= distanceL) {
-    turnRight();
-
-    // check if is passed obstacle
-    // distanceL = lookLeft();
-    // if (distanceL)
-    // 
-    //moveStop();
+      Serial.println("Turning right.");
+      turnRight();
   } else {
-    turnLeft();
-    //moveStop();
+      Serial.println("Turning left.");
+      turnLeft();
   }
 
-  //moveBackward();
-  delay(300);
+  // Advance a short distance
+  advanceShortDistance();
+
+  // Turn back to the original direction
+  if (distanceR >= distanceL) {
+      Serial.println("Turning back left.");
+      turnLeft();
+  } else {
+      Serial.println("Turning back right.");
+      turnRight();
+  }
+
+  // Resume forward motion
+  moveForward();
+  delay(500);
+  tDrive.enable(); // Re-enable driving task
 }
 
  
@@ -200,12 +195,10 @@ void setup() {
   runner.init();  // Initialize the scheduler
   runner.addTask(tCapteur);  // Add tasks to the scheduler
   runner.addTask(tDrive);
-  runner.addTask(tLaneChange);
 
   // Enable tasks to start running
   tCapteur.enable();
   tDrive.enable();
-  tLaneChange.enable();
 
   delay(5000);  // Add a small delay to give things time to initialize
   //runner.enableAll();
@@ -240,7 +233,7 @@ void moveStop() {
 }
  
 void moveForward() {
-  if (!goesForward) {
+  //if (!goesForward) {
     goesForward = true;
     leftMotor.run(FORWARD);      
     rightMotor.run(FORWARD);
@@ -249,7 +242,7 @@ void moveForward() {
       rightMotor.setSpeed(speedSet);
       delay(5);
     }
-  }
+  //}
 }
  
 void moveBackward() {
@@ -266,8 +259,17 @@ void moveBackward() {
 void turnRight() {
   leftMotor.run(FORWARD);
   rightMotor.run(BACKWARD);    
-  delay(100);
-  
+
+
+
+
+
+  delay(500); // We should try to change this value to depend on the angle at which the sensor found an opening. Maybe too difficult tho...
+
+
+
+
+  moveStop();
   //moveForward(); // resume forward motion after turning
 }
  
@@ -275,46 +277,44 @@ void turnLeft() {
   leftMotor.run(BACKWARD);    
   rightMotor.run(FORWARD);  
   delay(500);
-  moveForward(); // resume forward motion after turning
+  moveStop();
+  //moveForward(); // resume forward motion after turning
 }  
+
+void advanceShortDistance() {
+  Serial.println("Advancing a short distance.");
+  leftMotor.run(FORWARD);
+  rightMotor.run(FORWARD);
+  leftMotor.setSpeed(150);
+  rightMotor.setSpeed(150);
+  delay(2000); // Move forward for 1 second
+  moveStop();
+}
  
 int lookRight() {
-  int distanceR;
-  float radDistanceAdj;
-  for (int degree = 50; degree<90; degree=+5){
-    myservo.write(degree);
-    delay(20);
-    distanceR = readPing();
-    delay(100);
-    radDistanceAdj = cos((degree * PI) / 180.0) * distanceR;
-
-    // if (radDistanceAdj > 40) {
-          if (radDistanceAdj > 10) {
-
-      break;
-    }
+  int distanceR = 0;
+  for (int degree = 120; degree >= 50; degree -= 5) {
+      myservo.write(degree);
+      delay(20);
+      distanceR = readPing();
+      if (distanceR > 10) { // Stop scanning if a clear path is found
+          break;
+      }
   }
-  myservo.write(90);
-  return radDistanceAdj;
-
+  myservo.write(120); // Reset servo to center
+  return distanceR;
 }
  
 int lookLeft() {
-  int distanceL;
-  float radDistanceAdj;
-  for (int degree = 130; degree>90; degree=-5){
-    myservo.write(degree);
-    delay(20);
-    distanceL = readPing();
-    delay(100);
-    radDistanceAdj = cos((degree * PI) / 180.0) * distanceL;
-
-    // if (radDistanceAdj > 40) {
-          if (radDistanceAdj > 10) {
-
-      break;
-    }
+  int distanceL = 0;
+  for (int degree = 120; degree <= 190; degree += 5) {
+      myservo.write(degree);
+      delay(20);
+      distanceL = readPing();
+      if (distanceL > 10) { // Stop scanning if a clear path is found
+          break;
+      }
   }
-  myservo.write(90);
-  return radDistanceAdj;
+  myservo.write(120); // Reset servo to center
+  return distanceL;
 }
