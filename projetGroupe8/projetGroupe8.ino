@@ -158,7 +158,7 @@ void laneChange() {
   }
 
   // Advance a short distance
-  advanceShortDistance();
+  //advanceShortDistance();
 
   // Turn back to the original direction
   if (distanceR >= distanceL) {
@@ -177,7 +177,7 @@ void laneChange() {
 
  
 void setup() {
-        Serial.begin(9600); // open the serial port at 9600 bps:
+  Serial.begin(9600); // open the serial port at 9600 bps:
 
   myservo.attach(10);  
   myservo.write(120);
