@@ -35,8 +35,8 @@ void moveForward();
 void moveBackward();
 void turnRight();
 void turnLeft();
-int lookRight();
-int lookLeft();
+Range lookRight();
+Range lookLeft();
 
 // Callback methods
 void tCapteurCallback();
@@ -77,7 +77,7 @@ void laneChange() {
   Range rangeR = lookRight();
 
   int widthL = rangeL.endDegree - rangeL.startDegree;
-  int widthR = rangeR.endDegree - rangeR.startDegree;
+  int widthR = rangeR.startDegree - rangeR.endDegree;
 
   Serial.println("espace à la gauche: ");
   Serial.println(widthL);
@@ -112,7 +112,7 @@ void laneChange() {
   
   // check si cleared object
   tCapteur.enable();
-  tDrive.enable();
+  //tDrive.enable();
 }
 
 int calculateDelay(int degree) {
@@ -227,7 +227,7 @@ void advanceShortDistance() {
   moveStop();
 }
  
-int lookRight() {
+Range lookRight() {
   int distanceR = 0; // Initialize the maximum distance
   int startDegree = -1; // Start of the range (initialize to -1 to indicate no range found yet)
   int endDegree = -1;   // End of the range
@@ -241,7 +241,7 @@ int lookRight() {
     int tmpDistance = readPing(); // Measure the distance using the ultrasonic sensor
 
     // Check if the distance is greater than 100 cm
-    if (tmpDistance > 100) {
+    if (tmpDistance > 10) {
       // If this is the first degree in the range, set startDegree
       if (startDegree == -1) {
         startDegree = degree;
@@ -256,7 +256,7 @@ int lookRight() {
 
   // Calculate the widest range
   if (startDegree != -1 && endDegree != -1) {
-    degreeMaxR = (startDegree + endDegree) / 2;
+    degreeMaxR = round((startDegree + endDegree) / 2);
     Serial.print("Widest range on the right: ");
     Serial.print("Start = ");
     Serial.print(startDegree);
@@ -298,7 +298,7 @@ Range lookLeft() {
 
   // Calculate the widest range
   if (startDegree != -1 && endDegree != -1) {
-    degreeMaxL = (startDegree + endDegree) / 2;
+    degreeMaxL = round((startDegree + endDegree) / 2);
     Serial.print("Widest range on the left: ");
     Serial.print("Start = ");
     Serial.print(startDegree);
