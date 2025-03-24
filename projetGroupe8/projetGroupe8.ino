@@ -3,8 +3,8 @@
 #include <Servo.h>
 #include <TaskScheduler.h>
 
-#define TRIG_PIN A2
-#define ECHO_PIN A3
+#define TRIG_PIN A4
+#define ECHO_PIN A5
 #define MAX_DISTANCE 200
 #define MAX_SPEED 190 // Sets the speed of DC motors
 #define MAX_SPEED_OFFSET 20
@@ -23,6 +23,7 @@ struct Range
 Servo myservo;  
 
 boolean goesForward = false;
+boolean seenObstacle = false;
 int distance;
 int degreeMaxR;
 int degreeMaxL;
@@ -50,15 +51,21 @@ Scheduler runner;
 
 void tCapteurCallback() {
   distance = readPing();
-  Serial.print("Distance....");
-  Serial.print(distance);
+  Serial.print("Distance....: ");
+  Serial.println(distance);
 
   if (distance <= 50) { 
-    Serial.println("Obejct too close, stopping...");
-    tDrive.disable();
-    laneChange();
+    // if (seenObstacle){
+      Serial.println("Obejct too close, stopping...");
+      tDrive.disable();
+      laneChange();
+    // } else {
+    //   seenObstacle = true;
+    // }
+
   } else {
-    tDrive.enable();     
+    tDrive.enable();  
+    // seenObstacle = false;   
   }
 }
 
@@ -76,10 +83,11 @@ void tDriveCallback() {
 void laneChange() {
   moveStop();
   delay(500);
+  tCapteur.disable();
+
   Range rangeL = lookLeft();
   Range rangeR = lookRight();
 
-  int tmpDistance = readPing(); // Measure the distance using the ultrasonic sensor
   
   int widthL = abs(rangeL.endDegree - rangeL.startDegree);
   int widthR = abs(rangeR.startDegree - rangeR.endDegree);
@@ -88,6 +96,8 @@ void laneChange() {
   Serial.println(widthL);
   Serial.println("espace à la droite: ");
   Serial.println(widthR);
+
+  int tmpDistance = readPing(); // Measure the distance using the ultrasonic sensor
   
   if (widthL > 15 || widthR > 15) {
     if (widthL > widthR) {
@@ -97,7 +107,7 @@ void laneChange() {
 
       turnLeft();
       delay(delai);
-      moveStop();
+      // moveStop();
     } else {
       //if (distanceR >= distanceL) {
       int delai = calculateDelay(degreeMaxR);
@@ -106,10 +116,11 @@ void laneChange() {
 
       turnRight();
       delay(delai);
-      moveStop();
+      // moveStop();
     }
   } else if (tmpDistance > 50) {
-    //tDrive.enable();
+    // tDrive.enable();
+    tCapteur.enable();
     return;
   } else {
     // Check if object is forward?
@@ -120,8 +131,10 @@ void laneChange() {
   }
   
   // check si cleared object
-  //tCapteur.enable();
-  tDrive.enable();
+  moveStop();
+  delay(500);
+  tCapteur.enable();
+  // tDrive.enable();
 }
 
 int calculateDelay(int degree) {
