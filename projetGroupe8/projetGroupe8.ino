@@ -8,6 +8,8 @@
 #define MAX_DISTANCE 200
 #define MAX_SPEED 190 // Sets the speed of DC motors
 #define MAX_SPEED_OFFSET 20
+#define DIRECTION_LEFT 0
+#define DIRECTION_RIGHT 1
  
 NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
  
@@ -85,57 +87,49 @@ void laneChange() {
   delay(500);
   tCapteur.disable();
 
-  Range rangeL = lookLeft();
-  Range rangeR = lookRight();
+  Range rangeL = lookDirection(DIRECTION_LEFT);
+  Range rangeR = lookDirection(DIRECTION_RIGHT);
 
-  
   int widthL = abs(rangeL.endDegree - rangeL.startDegree);
   int widthR = abs(rangeR.startDegree - rangeR.endDegree);
 
-  Serial.println("espace à la gauche: ");
+  Serial.println("Space on the left: ");
   Serial.println(widthL);
-  Serial.println("espace à la droite: ");
+  Serial.println("Space on the right: ");
   Serial.println(widthR);
 
   int tmpDistance = readPing(); // Measure the distance using the ultrasonic sensor
-  
+
   if (widthL > 15 || widthR > 15) {
     if (widthL > widthR) {
-      int delai = calculateDelay(degreeMaxL);
-      Serial.print("Delai calculee a la gauche: ");
+      int delai = calculateDelay((rangeL.startDegree + rangeL.endDegree) / 2);
+      Serial.print("Calculated delay to the left: ");
       Serial.println(delai);
 
       turnLeft();
       delay(delai);
-      // moveStop();
     } else {
-      //if (distanceR >= distanceL) {
-      int delai = calculateDelay(degreeMaxR);
-      Serial.print("Delai calculee a la droite: ");
+      int delai = calculateDelay((rangeR.startDegree + rangeR.endDegree) / 2);
+      Serial.print("Calculated delay to the right: ");
       Serial.println(delai);
 
       turnRight();
       delay(delai);
-      // moveStop();
     }
   } else if (tmpDistance > 50) {
-    // tDrive.enable();
     tCapteur.enable();
     return;
   } else {
-    // Check if object is forward?
-    // Go backwards
     moveBackward();
     delay(500);
     laneChange();
   }
-  
-  // check si cleared object
+
   moveStop();
   delay(500);
   tCapteur.enable();
-  // tDrive.enable();
 }
+
 
 int calculateDelay(int degree) {
   // float vitAngulaire = 0.19895;
@@ -252,121 +246,59 @@ void advanceShortDistance() {
   delay(2000); // Move forward for 1 second
   moveStop();
 }
+
+// General function to look in a direction based on the given parameters
+Range lookDirection(int direction) {
+  int startDegree, endDegree, rangeMax = -1;
+  int degreeMax = (direction == DIRECTION_RIGHT) ? 45 : 135; // Default degrees if no valid range is found
+  int degreeStep = (direction == DIRECTION_RIGHT) ? -5 : 5;  // Direction of degree change
+  int startScan = (direction == DIRECTION_RIGHT) ? 90 : 90;
+  int endScan = (direction == DIRECTION_RIGHT) ? 45 : 135;
+  Range range = {90, 90};  // Default range starting point
+
+  Serial.print(direction == DIRECTION_RIGHT ? "Look right: " : "Look left: ");
+
+  // Scan from center to the specified direction
+  for (int degree = startScan; (direction == DIRECTION_RIGHT ? degree >= endScan : degree <= endScan); degree += degreeStep) {
+    myservo.write(degree);
+    delay(20);
+
+    int tmpDistance = readPing();
+    Serial.print(tmpDistance);
+    Serial.print(" - degree: ");
+    Serial.println(degree);
+
+    if (tmpDistance > 50) {
+      if (startDegree == -1) {
+        startDegree = degree;
+      }
+      endDegree = degree;
+      int tmpRangeMax = abs(startDegree - endDegree);
+      if (tmpRangeMax > rangeMax) {
+        rangeMax = tmpRangeMax;
+        range.startDegree = startDegree;
+        range.endDegree = endDegree;
+      }
+    } else {
+      startDegree = -1;
+      endDegree = -1;
+    }
+  }
+
+  myservo.write(90);
+
+  if (range.startDegree != -1 && range.endDegree != -1) {
+    int middleDegree = round((range.startDegree + range.endDegree) / 2);
+    Serial.print("Widest range: Start = ");
+    Serial.print(range.startDegree);
+    Serial.print(", End = ");
+    Serial.println(range.endDegree);
+    degreeMax = middleDegree;
+  } else {
+    Serial.println("No range found with distance > 20 cm.");
+  }
+
+  return range;
+}
+
  
-Range lookRight() {
-  int distanceR = 0; // Initialize the maximum distance
-  int startDegree = -1; // Start of the range (initialize to -1 to indicate no range found yet)
-  int endDegree = -1;   // End of the range
-  int rangeMax = -1;
-  degreeMaxR = 45;      // Default to 45° if no valid range is found
-  Range range = {90, 90};
-
-    Serial.print("Look right: ");
-  for (int degree = 90; degree >= 45; degree -= 5) {
-
-  // Scan from 90° (center) to 45° (right) in steps of 5°
-    myservo.write(degree); // Move the servo to the current angle
-    delay(20);             // Wait for the servo to stabilize
-
-    int tmpDistance = readPing(); // Measure the distance using the ultrasonic sensor
-    Serial.print(tmpDistance);
-    Serial.print(" - degree: ");
-    Serial.println(degree);
-
-    // Check if the distance is greater than 100 cm
-    if (tmpDistance > 50) {
-      // If this is the first degree in the range, set startDegree
-      if (startDegree == -1) {
-        startDegree = degree;
-      }
-      // Update endDegree to the current degree
-      endDegree = degree;
-      int tmpRangeMax = abs(startDegree - endDegree);
-      if(tmpRangeMax > rangeMax){
-        rangeMax = tmpRangeMax;
-        range.startDegree = startDegree;
-        range.endDegree = endDegree;
-      }
-    } 
-    else {
-      startDegree = -1;
-      endDegree = -1;
-    }
-  }
-
-  // Reset the servo to the center (90°)
-  myservo.write(90);
-
-  // Calculate the widest range
-  if (range.startDegree != -1 && range.endDegree != -1) {
-    degreeMaxR = round((range.startDegree + range.endDegree) / 2);
-    Serial.print("Widest range on the right: ");
-    Serial.print("Start = ");
-    Serial.print(range.startDegree);
-    Serial.print(", End = ");
-    Serial.println(range.endDegree);
-  } else {
-    Serial.println("No range found with distance > 20 cm.");
-  }
-
-  return range;
-}
-
-Range lookLeft() {
-  int startDegree = -1; // Start of the range (initialize to -1 to indicate no range found yet)
-  int endDegree = -1;   // End of the range
-  int rangeMax = -1;
-  degreeMaxL = 135;     // Default to 135° if no valid range is found
-  Range range = {90, 90};
-    Serial.print("Look left: ");
-
-  // Scan from 90° (center) to 135° (left) in steps of 5°
-    for (int degree = 90; degree <= 135; degree += 5) {
-
-    myservo.write(degree); // Move the servo to the current angle
-    delay(20);             // Wait for the servo to stabilize
-
-    int tmpDistance = readPing(); // Measure the distance using the ultrasonic sensor
-    Serial.print(tmpDistance);
-    Serial.print(" - degree: ");
-    Serial.println(degree);
-
-    // Check if the distance is greater than 100 cm
-    if (tmpDistance > 50) {
-      // If this is the first degree in the range, set startDegree
-      if (startDegree == -1) {
-        startDegree = degree;
-      }
-      // Update endDegree to the current degree
-      endDegree = degree;
-      int tmpRangeMax = abs(startDegree - endDegree);
-      if(tmpRangeMax > rangeMax){
-        rangeMax = tmpRangeMax;
-        range.startDegree = startDegree;
-        range.endDegree = endDegree;
-      }
-    } 
-    else {
-      startDegree = -1;
-      endDegree = -1;
-    }
-  }
-
-  // Reset the servo to the center (90°)
-  myservo.write(90);
-
-  // Calculate the widest range
-  if (range.startDegree != -1 && range.endDegree != -1) {
-    degreeMaxL = round((range.startDegree + range.endDegree) / 2);
-    Serial.print("Widest range on the left: ");
-    Serial.print("Start = ");
-    Serial.print(range.startDegree);
-    Serial.print(", End = ");
-    Serial.println(range.endDegree);
-  } else {
-    Serial.println("No range found with distance > 20 cm.");
-  }
-
-  // Return the range as a struct
-  return range;
-}
