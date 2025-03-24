@@ -59,13 +59,8 @@ void tCapteurCallback() {
       Serial.println("Obejct too close, stopping...");
       tDrive.disable();
       laneChange();
-    // } else {
-    //   seenObstacle = true;
-    // }
-
   } else {
     tDrive.enable();  
-    // seenObstacle = false;   
   }
 }
 
@@ -138,13 +133,7 @@ void laneChange() {
 }
 
 int calculateDelay(int degree) {
-  // float vitAngulaire = 0.19895;
-  // Serial.println("degree a claucler");
-  // Serial.println(radians(degree));
-  // float temps = radians(degree) / vitAngulaire; // temps en secondes
-
-  // // converti temps en milisecondes
-  // int returnVal = round(temps * 1000);
+  // converti temps en milisecondes
   float vitesseRoues = 0.19895; // en m/s
   float radian = radians(degree);
   float largeurEntreRoues = 0.11; // en metre
@@ -164,10 +153,6 @@ void setup() {
   Serial.begin(9600); // open the serial port at 9600 bps:
   myservo.attach(10);  
   myservo.write(90);
-  // delay(2000);
-  // myservo.write(135);
-  // delay(2000);
-  // myservo.write(45);
   delay(2000);
 
   runner.init();  // Initialize the scheduler
@@ -204,17 +189,15 @@ void moveForward() {
   goesForward = true;
   leftMotor.run(FORWARD);      
   rightMotor.run(FORWARD);
-  // for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
     leftMotor.setSpeed(MAX_SPEED);
     rightMotor.setSpeed(MAX_SPEED);
-  //   delay(5);
-  // }
 }
  
 void moveBackward() {
   goesForward = false;
   leftMotor.run(BACKWARD);      
   rightMotor.run(BACKWARD);
+ // Slowly goes backwards
   for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
     leftMotor.setSpeed(speedSet);
     rightMotor.setSpeed(speedSet);
@@ -225,22 +208,15 @@ void moveBackward() {
 void turnRight() {
   rightMotor.run(BACKWARD);    
   leftMotor.run(FORWARD);
-  // for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
     leftMotor.setSpeed(MAX_SPEED);
     rightMotor.setSpeed(MAX_SPEED);
-    // delay(5);
-  // }
 }
  
- // Possible error! Motors are inverted
 void turnLeft() {
   leftMotor.run(BACKWARD);    
   rightMotor.run(FORWARD);  
-  // for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
     leftMotor.setSpeed(MAX_SPEED);
     rightMotor.setSpeed(MAX_SPEED);
-  //   delay(5);
-  // }
 }  
 
 void advanceShortDistance() {
