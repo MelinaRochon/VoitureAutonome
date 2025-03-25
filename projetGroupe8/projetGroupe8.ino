@@ -44,7 +44,7 @@ void tCapteurCallback();
 void tDriveCallback();
 
 // Cree les taches
-Task tCapteur(2000, TASK_FOREVER, &tCapteurCallback); // lis les capteurs
+Task tCapteur(500, TASK_FOREVER, &tCapteurCallback); // lis les capteurs
 Task tDrive(3000, TASK_FOREVER, &tDriveCallback); 
 
 Scheduler runner;
@@ -54,8 +54,7 @@ void tCapteurCallback() {
   Serial.print("Distance....: ");
   Serial.println(distance);
 
-  if (distance <= 50) { 
-    // if (seenObstacle){
+  if (distance <= 30) { 
       Serial.println("Obejct too close, stopping...");
       tDrive.disable();
       laneChange();
@@ -63,6 +62,8 @@ void tCapteurCallback() {
     tDrive.enable();  
   }
 }
+
+
 
 
 void tDriveCallback() {
@@ -102,23 +103,18 @@ void laneChange() {
 
       turnLeft();
       delay(delai);
-      // moveStop();
     } else {
-      //if (distanceR >= distanceL) {
       int delai = calculateDelay(degreeMaxR);
       Serial.print("Delai calculee a la droite: ");
       Serial.println(delai);
 
       turnRight();
       delay(delai);
-      // moveStop();
     }
   } else if (tmpDistance > 50) {
-    // tDrive.enable();
     tCapteur.enable();
     return;
   } else {
-    // Check if object is forward?
     // Go backwards
     moveBackward();
     delay(500);
@@ -148,28 +144,7 @@ int calculateDelay(int degree) {
   int returnVal = round(temps * 500);
   return returnVal;
 }
- 
-void setup() {
-  Serial.begin(9600); // open the serial port at 9600 bps:
-  myservo.attach(10);  
-  myservo.write(90);
-  delay(2000);
-
-  runner.init();  // Initialize the scheduler
-  runner.addTask(tCapteur);  // Add tasks to the scheduler
-  runner.addTask(tDrive);
-
-  // Enable tasks to start running
-  tCapteur.enable();
-  tDrive.enable();
-
-  delay(500);  // Add a small delay to give things time to initialize
-}
- 
-void loop() {
-  runner.execute();
-}
- 
+  
 /* Lis la distance entre l'auto et l'objet */
 int readPing() {
   delay(70);
@@ -345,4 +320,25 @@ Range lookLeft() {
 
   // Return the range as a struct
   return range;
+}
+
+void setup() {
+  Serial.begin(9600); // open the serial port at 9600 bps:
+  myservo.attach(10);  
+  myservo.write(90);
+  delay(2000);
+
+  runner.init();  // Initialize the scheduler
+  runner.addTask(tCapteur);  // Add tasks to the scheduler
+  runner.addTask(tDrive);
+
+  // Enable tasks to start running
+  tCapteur.enable();
+  tDrive.enable();
+
+  delay(500);  // Add a small delay to give things time to initialize
+}
+ 
+void loop() {
+  runner.execute();
 }
