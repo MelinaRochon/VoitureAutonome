@@ -8,8 +8,6 @@
 #define MAX_DISTANCE 200
 #define MAX_SPEED 190 // Sets the speed of DC motors
 #define MAX_SPEED_OFFSET 20
-// #define LED_LEFT A3
-// #define LED_RIGHT 9
  
 NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
  
@@ -44,54 +42,19 @@ Range lookRight();
 // Callback methods
 void tCapteurCallback();
 void tDriveCallback();
-// void tBlinkLeftCallback();
-// void tBlinkRightCallback();
 
 // Cree les taches
 Task tCapteur(500, TASK_FOREVER, &tCapteurCallback); // lis les capteurs
-Task tDrive(3000, TASK_FOREVER, &tDriveCallback); 
-// Task tBlinkLeft(4000, TASK_FOREVER, &tBlinkLeftCallback); // pour la LED de gauche
-// Task tBlinkRight(5000, TASK_FOREVER, &tBlinkRightCallback); // pour la LED de droite
+Task tDrive(500, TASK_FOREVER, &tDriveCallback); 
 
 Scheduler runner;
-
-// void tBlinkRightCallback() {
-  
-//   digitalWrite(LED_LEFT, LOW);
-//       Serial.println("");
-
-//   Serial.print("Blinking right!!: ");
-//     Serial.println("");
-
-//   // while(1) {
-//     digitalWrite(LED_RIGHT, HIGH);
-//     delay(500);
-//     digitalWrite(LED_RIGHT, LOW);
-//     delay(500);
-//   // }
-// }
-
-// void tBlinkLeftCallback() {
-//   digitalWrite(LED_RIGHT, LOW);
-//     Serial.println("");
-
-//   Serial.println("Blinking left!!: ");
-//     Serial.println("");
-
-//   // while(1) {
-//     digitalWrite(LED_LEFT, HIGH);
-//     delay(500);
-//     digitalWrite(LED_LEFT, LOW);
-//     delay(500);
-//   // }
-// }
 
 void tCapteurCallback() {
   distance = readPing();
   Serial.print("Distance....: ");
   Serial.println(distance);
 
-  if (distance <= 30) { 
+  if (distance <= 50) { 
       Serial.println("Obejct too close, stopping...");
       tDrive.disable();
       laneChange();
@@ -100,11 +63,7 @@ void tCapteurCallback() {
   }
 }
 
-
-
-
-void tDriveCallback() {
-  
+void tDriveCallback() { 
   if(distance <= 50) {
     moveStop();
   }
@@ -121,7 +80,6 @@ void laneChange() {
   Range rangeL = lookLeft();
   Range rangeR = lookRight();
 
-  
   int widthL = abs(rangeL.endDegree - rangeL.startDegree);
   int widthR = abs(rangeR.startDegree - rangeR.endDegree);
 
@@ -132,32 +90,34 @@ void laneChange() {
 
   int tmpDistance = readPing(); // Measure the distance using the ultrasonic sensor
   
-  if (widthL > 10 || widthR > 10) {
+  if (widthL > 15 || widthR > 15) {
     if (widthL > widthR) {
       int delai = calculateDelay(degreeMaxL);
       Serial.print("Delai calculee a la gauche: ");
       Serial.println(delai);
-      // tBlinkLeft.enable(); 
-      // delay(2000); // donne le temps de partir la LED gauche
+
       turnLeft();
       delay(delai);
-      // tBlinkLeft.disable(); // arrete le pulse
+    } else {
+      int delai = calculateDelay(degreeMaxR);
+      Serial.print("Delai calculee a la droite: ");
+      Serial.println(delai);
 
-      moveStop();
+      turnRight();
+      delay(delai);
+    }
   } else if (tmpDistance > 50) {
-    // tDrive.enable();
     tCapteur.enable();
     return;
   } else {
-
     // Go backwards
     moveBackward();
     delay(500);
     laneChange();
   }
   
-  moveStop();
   // check si cleared object
+  moveStop();
   delay(500);
   tCapteur.enable();
   // tDrive.enable();
@@ -179,42 +139,7 @@ int calculateDelay(int degree) {
   int returnVal = round(temps * 500);
   return returnVal;
 }
- 
-void setup() {
-  Serial.begin(9600); // open the serial port at 9600 bps:
-  myservo.attach(10);  
-  myservo.write(90);
-  // delay(2000);
-  // myservo.write(135);
-  // delay(2000);
-  // myservo.write(45);
-  delay(2000);
-  // moveStop();
-  // delay(2000);
-
-  // pinMode(LED_LEFT, OUTPUT);
-  // pinMode(LED_RIGHT, OUTPUT);
-
-  runner.init();  // Initialize the scheduler
-  runner.addTask(tCapteur);  // Add tasks to the scheduler
-  runner.addTask(tDrive);
-  // runner.addTask(tBlinkLeft);
-  // runner.addTask(tBlinkRight);
-
-  // Enable tasks to start running
-  tCapteur.enable();
-  tDrive.enable();
-  // tBlinkLeft.enable();
-  // tBlinkRight.enable();
-
-
-  delay(500);  // Add a small delay to give things time to initialize
-}
- 
-void loop() {
-  runner.execute();
-}
- 
+  
 /* Lis la distance entre l'auto et l'objet */
 int readPing() {
   delay(70);
@@ -228,8 +153,6 @@ int readPing() {
 void moveStop() {
   leftMotor.run(RELEASE);
   rightMotor.run(RELEASE);
-  // digitalWrite(LED_LEFT, HIGH);
-  // digitalWrite(LED_RIGHT, HIGH);
 }
  
 void moveForward() {
@@ -244,14 +167,6 @@ void moveBackward() {
   goesForward = false;
   leftMotor.run(BACKWARD);      
   rightMotor.run(BACKWARD);
-  // for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
-    leftMotor.setSpeed(MAX_SPEED);
-    rightMotor.setSpeed(MAX_SPEED);
-  //   delay(5);
-  // }
-  // digitalWrite(LED_LEFT, HIGH);
-  // digitalWrite(LED_RIGHT, HIGH);
-
  // Slowly goes backwards
   for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
     leftMotor.setSpeed(speedSet);
@@ -292,10 +207,10 @@ Range lookRight() {
   degreeMaxR = 45;      // Default to 45° if no valid range is found
   Range range = {90, 90};
 
-    Serial.print("Look right: ");
+  Serial.print("Look right: ");
   for (int degree = 90; degree >= 45; degree -= 5) {
 
-  // Scan from 90° (center) to 45° (right) in steps of 5°
+    // Scan from 90° (center) to 45° (right) in steps of 5°
     myservo.write(degree); // Move the servo to the current angle
     delay(20);             // Wait for the servo to stabilize
 
@@ -349,10 +264,10 @@ Range lookLeft() {
   int rangeMax = -1;
   degreeMaxL = 135;     // Default to 135° if no valid range is found
   Range range = {90, 90};
-    Serial.print("Look left: ");
+  Serial.print("Look left: ");
 
   // Scan from 90° (center) to 135° (left) in steps of 5°
-    for (int degree = 90; degree <= 135; degree += 5) {
+  for (int degree = 90; degree <= 135; degree += 5) {
 
     myservo.write(degree); // Move the servo to the current angle
     delay(20);             // Wait for the servo to stabilize
