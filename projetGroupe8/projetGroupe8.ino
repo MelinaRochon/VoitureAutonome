@@ -8,6 +8,8 @@
 #define MAX_DISTANCE 200
 #define MAX_SPEED 190 // Sets the speed of DC motors
 #define MAX_SPEED_OFFSET 20
+// #define LED_LEFT A3
+// #define LED_RIGHT 9
  
 NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
  
@@ -42,12 +44,47 @@ Range lookRight();
 // Callback methods
 void tCapteurCallback();
 void tDriveCallback();
+// void tBlinkLeftCallback();
+// void tBlinkRightCallback();
 
 // Cree les taches
 Task tCapteur(2000, TASK_FOREVER, &tCapteurCallback); // lis les capteurs
 Task tDrive(3000, TASK_FOREVER, &tDriveCallback); 
+// Task tBlinkLeft(4000, TASK_FOREVER, &tBlinkLeftCallback); // pour la LED de gauche
+// Task tBlinkRight(5000, TASK_FOREVER, &tBlinkRightCallback); // pour la LED de droite
 
 Scheduler runner;
+
+// void tBlinkRightCallback() {
+  
+//   digitalWrite(LED_LEFT, LOW);
+//       Serial.println("");
+
+//   Serial.print("Blinking right!!: ");
+//     Serial.println("");
+
+//   // while(1) {
+//     digitalWrite(LED_RIGHT, HIGH);
+//     delay(500);
+//     digitalWrite(LED_RIGHT, LOW);
+//     delay(500);
+//   // }
+// }
+
+// void tBlinkLeftCallback() {
+//   digitalWrite(LED_RIGHT, LOW);
+//     Serial.println("");
+
+//   Serial.println("Blinking left!!: ");
+//     Serial.println("");
+
+//   // while(1) {
+//     digitalWrite(LED_LEFT, HIGH);
+//     delay(500);
+//     digitalWrite(LED_LEFT, LOW);
+//     delay(500);
+//   // }
+// }
 
 void tCapteurCallback() {
   distance = readPing();
@@ -99,30 +136,39 @@ void laneChange() {
 
   int tmpDistance = readPing(); // Measure the distance using the ultrasonic sensor
   
-  if (widthL > 15 || widthR > 15) {
+  if (widthL > 10 || widthR > 10) {
     if (widthL > widthR) {
       int delai = calculateDelay(degreeMaxL);
       Serial.print("Delai calculee a la gauche: ");
       Serial.println(delai);
-
+      // tBlinkLeft.enable(); 
+      // delay(2000); // donne le temps de partir la LED gauche
       turnLeft();
       delay(delai);
-      // moveStop();
+      // tBlinkLeft.disable(); // arrete le pulse
+
+      moveStop();
     } else {
       //if (distanceR >= distanceL) {
       int delai = calculateDelay(degreeMaxR);
       Serial.print("Delai calculee a la droite: ");
       Serial.println(delai);
+      // tBlinkRight.enable(); 
+      // delay(2000); // donne le temps de partir la LED droite
 
       turnRight();
       delay(delai);
-      // moveStop();
+      // tBlinkRight.disable(); // arrete le pulse
+      moveStop();
     }
-  } else if (tmpDistance > 50) {
+  } else {
+  
+  if (tmpDistance > 50) {
     // tDrive.enable();
     tCapteur.enable();
     return;
-  } else {
+  } 
+  //else {
     // Check if object is forward?
     // Go backwards
     moveBackward();
@@ -130,8 +176,8 @@ void laneChange() {
     laneChange();
   }
   
-  // check si cleared object
   moveStop();
+  // check si cleared object
   delay(500);
   tCapteur.enable();
   // tDrive.enable();
@@ -169,14 +215,24 @@ void setup() {
   // delay(2000);
   // myservo.write(45);
   delay(2000);
+  // moveStop();
+  // delay(2000);
+
+  // pinMode(LED_LEFT, OUTPUT);
+  // pinMode(LED_RIGHT, OUTPUT);
 
   runner.init();  // Initialize the scheduler
   runner.addTask(tCapteur);  // Add tasks to the scheduler
   runner.addTask(tDrive);
+  // runner.addTask(tBlinkLeft);
+  // runner.addTask(tBlinkRight);
 
   // Enable tasks to start running
   tCapteur.enable();
   tDrive.enable();
+  // tBlinkLeft.enable();
+  // tBlinkRight.enable();
+
 
   delay(500);  // Add a small delay to give things time to initialize
 }
@@ -198,6 +254,8 @@ int readPing() {
 void moveStop() {
   leftMotor.run(RELEASE);
   rightMotor.run(RELEASE);
+  // digitalWrite(LED_LEFT, HIGH);
+  // digitalWrite(LED_RIGHT, HIGH);
 }
  
 void moveForward() {
@@ -209,17 +267,23 @@ void moveForward() {
     rightMotor.setSpeed(MAX_SPEED);
   //   delay(5);
   // }
+  // digitalWrite(LED_LEFT, LOW);
+  // digitalWrite(LED_RIGHT, LOW);
+
 }
  
 void moveBackward() {
   goesForward = false;
   leftMotor.run(BACKWARD);      
   rightMotor.run(BACKWARD);
-  for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
-    leftMotor.setSpeed(speedSet);
-    rightMotor.setSpeed(speedSet);
-    delay(5);
-  }
+  // for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
+    leftMotor.setSpeed(MAX_SPEED);
+    rightMotor.setSpeed(MAX_SPEED);
+  //   delay(5);
+  // }
+  // digitalWrite(LED_LEFT, HIGH);
+  // digitalWrite(LED_RIGHT, HIGH);
+
 }  
  
 void turnRight() {
