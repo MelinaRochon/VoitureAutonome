@@ -48,7 +48,7 @@ void tDriveCallback();
 // void tBlinkRightCallback();
 
 // Cree les taches
-Task tCapteur(2000, TASK_FOREVER, &tCapteurCallback); // lis les capteurs
+Task tCapteur(500, TASK_FOREVER, &tCapteurCallback); // lis les capteurs
 Task tDrive(3000, TASK_FOREVER, &tDriveCallback); 
 // Task tBlinkLeft(4000, TASK_FOREVER, &tBlinkLeftCallback); // pour la LED de gauche
 // Task tBlinkRight(5000, TASK_FOREVER, &tBlinkRightCallback); // pour la LED de droite
@@ -91,20 +91,16 @@ void tCapteurCallback() {
   Serial.print("Distance....: ");
   Serial.println(distance);
 
-  if (distance <= 50) { 
-    // if (seenObstacle){
+  if (distance <= 30) { 
       Serial.println("Obejct too close, stopping...");
       tDrive.disable();
       laneChange();
-    // } else {
-    //   seenObstacle = true;
-    // }
-
   } else {
     tDrive.enable();  
-    // seenObstacle = false;   
   }
 }
+
+
 
 
 void tDriveCallback() {
@@ -148,28 +144,12 @@ void laneChange() {
       // tBlinkLeft.disable(); // arrete le pulse
 
       moveStop();
-    } else {
-      //if (distanceR >= distanceL) {
-      int delai = calculateDelay(degreeMaxR);
-      Serial.print("Delai calculee a la droite: ");
-      Serial.println(delai);
-      // tBlinkRight.enable(); 
-      // delay(2000); // donne le temps de partir la LED droite
-
-      turnRight();
-      delay(delai);
-      // tBlinkRight.disable(); // arrete le pulse
-      moveStop();
-    }
-  } else {
-  
-  if (tmpDistance > 50) {
+  } else if (tmpDistance > 50) {
     // tDrive.enable();
     tCapteur.enable();
     return;
-  } 
-  //else {
-    // Check if object is forward?
+  } else {
+
     // Go backwards
     moveBackward();
     delay(500);
@@ -184,13 +164,7 @@ void laneChange() {
 }
 
 int calculateDelay(int degree) {
-  // float vitAngulaire = 0.19895;
-  // Serial.println("degree a claucler");
-  // Serial.println(radians(degree));
-  // float temps = radians(degree) / vitAngulaire; // temps en secondes
-
-  // // converti temps en milisecondes
-  // int returnVal = round(temps * 1000);
+  // converti temps en milisecondes
   float vitesseRoues = 0.19895; // en m/s
   float radian = radians(degree);
   float largeurEntreRoues = 0.11; // en metre
@@ -262,14 +236,8 @@ void moveForward() {
   goesForward = true;
   leftMotor.run(FORWARD);      
   rightMotor.run(FORWARD);
-  // for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
     leftMotor.setSpeed(MAX_SPEED);
     rightMotor.setSpeed(MAX_SPEED);
-  //   delay(5);
-  // }
-  // digitalWrite(LED_LEFT, LOW);
-  // digitalWrite(LED_RIGHT, LOW);
-
 }
  
 void moveBackward() {
@@ -284,27 +252,26 @@ void moveBackward() {
   // digitalWrite(LED_LEFT, HIGH);
   // digitalWrite(LED_RIGHT, HIGH);
 
+ // Slowly goes backwards
+  for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
+    leftMotor.setSpeed(speedSet);
+    rightMotor.setSpeed(speedSet);
+    delay(5);
+  }
 }  
  
 void turnRight() {
   rightMotor.run(BACKWARD);    
   leftMotor.run(FORWARD);
-  // for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
     leftMotor.setSpeed(MAX_SPEED);
     rightMotor.setSpeed(MAX_SPEED);
-    // delay(5);
-  // }
 }
  
- // Possible error! Motors are inverted
 void turnLeft() {
   leftMotor.run(BACKWARD);    
   rightMotor.run(FORWARD);  
-  // for (speedSet = 0; speedSet < MAX_SPEED; speedSet += 2) {
     leftMotor.setSpeed(MAX_SPEED);
     rightMotor.setSpeed(MAX_SPEED);
-  //   delay(5);
-  // }
 }  
 
 void advanceShortDistance() {
@@ -433,4 +400,25 @@ Range lookLeft() {
 
   // Return the range as a struct
   return range;
+}
+
+void setup() {
+  Serial.begin(9600); // open the serial port at 9600 bps:
+  myservo.attach(10);  
+  myservo.write(90);
+  delay(2000);
+
+  runner.init();  // Initialize the scheduler
+  runner.addTask(tCapteur);  // Add tasks to the scheduler
+  runner.addTask(tDrive);
+
+  // Enable tasks to start running
+  tCapteur.enable();
+  tDrive.enable();
+
+  delay(500);  // Add a small delay to give things time to initialize
+}
+ 
+void loop() {
+  runner.execute();
 }
